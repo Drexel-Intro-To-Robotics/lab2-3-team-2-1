@@ -1,4 +1,4 @@
-image: /root/map/lab2map.pgm
+image: /root/map/map2.pgm
 resolution: 0.050000
 origin: [-10.000000, -10.000000, 0.000000]
 negate: 0

@@ -6,6 +6,9 @@ import rospy
 from geometry_msgs.msg import Twist, PoseStamped, Quaternion
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
+import csv
+import time
+from sensor_msgs.msg import Imu
 
 
 class myTurtle:
@@ -17,6 +20,30 @@ class myTurtle:
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_cb)
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.nav_to_pose)
+        # IMU subscriber
+        self.imu_sub = rospy.Subscriber("/imu", Imu, self.imu_cb)
+
+        # IMU state
+        self.imu_ax = 0.0
+        self.imu_ay = 0.0
+        self.imu_az = 0.0
+        self.imu_wx = 0.0
+        self.imu_wy = 0.0
+        self.imu_wz = 0.0
+
+        # CSV setup
+        self.csv_file = open('/workspaces/lab2-3-team-2-1/catkin_ws/robot_data.csv', 'w', newline='')
+        self.csv_writer = csv.writer(self.csv_file)
+        self.csv_writer.writerow([
+            'time',
+            'odom_x', 'odom_y', 'odom_yaw',
+            'vel_linear', 'vel_angular',
+            'imu_ax', 'imu_ay', 'imu_az',
+            'imu_wx', 'imu_wy', 'imu_wz'
+        ])
+
+        self.start_time = time.time()
+        self.last_cmd = Twist()  # track last published velocity
 
         self.rate = rospy.Rate(20)
 
@@ -37,6 +64,14 @@ class myTurtle:
         _, _, self.yaw = self.convert_to_euler(q)
 
         self.odom_ready = True
+
+    def imu_cb(self, msg):
+        self.imu_ax = msg.linear_acceleration.x
+        self.imu_ay = msg.linear_acceleration.y
+        self.imu_az = msg.linear_acceleration.z
+        self.imu_wx = msg.angular_velocity.x
+        self.imu_wy = msg.angular_velocity.y
+        self.imu_wz = msg.angular_velocity.z
 
     def nav_to_pose(self, goal):
         # Move to clicked goal in RViz
@@ -73,7 +108,7 @@ class myTurtle:
         twist = Twist()
 
         for _ in range(10):
-            self.cmd_pub.publish(twist)
+            self.publish_cmd(twist)
             self.rate.sleep()
 
     def drive_straight(self, dist, vel):
@@ -95,7 +130,7 @@ class myTurtle:
             if travelled >= abs(dist):
                 break
 
-            self.cmd_pub.publish(twist)
+            self.publish_cmd(twist)
             self.rate.sleep()
 
         self.stop()
@@ -116,7 +151,7 @@ class myTurtle:
             if abs(error) < 0.02:
                 break
 
-            self.cmd_pub.publish(twist)
+            self.publish_cmd(twist)
             self.rate.sleep()
 
         self.stop()
@@ -137,7 +172,7 @@ class myTurtle:
             if current_time - start_time >= run_time:
                 break
 
-            self.cmd_pub.publish(twist)
+            self.publish_cmd(twist)
             self.rate.sleep()
 
         self.stop()
@@ -163,7 +198,7 @@ class myTurtle:
             if current_time - start_time >= run_time:
                 break
 
-            self.cmd_pub.publish(twist)
+            self.publish_cmd(twist)
             self.rate.sleep()
 
         self.stop()
@@ -217,7 +252,25 @@ class myTurtle:
         # Wait until odom data starts coming
         while not rospy.is_shutdown() and not self.odom_ready:
             self.rate.sleep()
-
+    
+    def log_data(self):
+        t = time.time() - self.start_time
+        self.csv_writer.writerow([
+            round(t, 4),
+            round(self.x, 4),      round(self.y, 4),   round(self.yaw, 4),
+            round(self.last_cmd.linear.x, 4),           round(self.last_cmd.angular.z, 4),
+            round(self.imu_ax, 4), round(self.imu_ay, 4), round(self.imu_az, 4),
+            round(self.imu_wx, 4), round(self.imu_wy, 4), round(self.imu_wz, 4)
+        ])
+    def cleanup(self):
+        self.stop()
+        self.csv_file.close()
+        rospy.loginfo("Data saved to robot_data.csv")
+    
+    def publish_cmd(self, twist):
+        self.last_cmd = twist
+        self.log_data()
+        self.cmd_pub.publish(twist)
 
 def main():
     robot = myTurtle()
@@ -246,6 +299,7 @@ def main():
     robot.rotate(math.pi / 2)
     rospy.sleep(2)
 
+    robot.stop()
     rospy.loginfo("All tasks complete")
 
     rospy.spin()

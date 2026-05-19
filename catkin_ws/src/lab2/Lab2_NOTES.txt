@@ -16,10 +16,16 @@ Host = <Robot IP>
 -----------------Creating the map----------------------
 Terminal 1 - roscore
 Terminal 2 - ssh ubuntu, roslaunch turtlebot3_bringup turtlebot3_robot.launch
+if first time --> go outside docker, $xhost +local:root
 Terminal 3 - export TURTLEBOT3_MODEL=waffle, roslaunch turtlebot3_slam turtlebot3_slam.launch
 Terminal 4 - export TURTLEBOT3_MODEL=waffle, roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch --> drive robot around map
-Terminal 5 - rosrun map_server map_saver -f ~/map* 
-Double check map is saved
+Terminal 5 - mkdir ~/map/, rosrun map_server map_saver -f ~/map/<map name> 
+Double check map is saved) $cp -r ~/map ./
+
+-------------------Check Display------------------------
+echo $DISPLAY
+may need to change display if rviz wont launch with turtlebot3_slam
+export DISPLAY=:<display number>
 
 
 -----------------How to launch scripts-------------------
@@ -27,7 +33,8 @@ Checklist)
 robot bringup (ssh)
 roscore
 catkin_make
+source devel/setup.bash
+Display - if rviz fails, likely using wrong display
 
 *Make sure they are executable
-1) export TURTLEBOT3_MODEL=waffle
-2) roslaunch lab2 lab2.launch
+$roslaunch lab2 lab2.launch
