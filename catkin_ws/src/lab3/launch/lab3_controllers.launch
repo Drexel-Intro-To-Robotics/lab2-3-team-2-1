@@ -2,7 +2,7 @@
 <launch>
 
   <!-- Load controller config onto parameter server -->
-  <rosparam file="$(find me571_lab3)/config/lab3_controllers.yaml"
+  <rosparam file="$(find lab3)/config/controllers.yaml"
             command="load"/>
 
   <!-- Start the controller manager -->

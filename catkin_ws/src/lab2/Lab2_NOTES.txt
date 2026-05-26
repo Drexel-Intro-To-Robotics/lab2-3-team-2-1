@@ -34,7 +34,7 @@ robot bringup (ssh)
 roscore
 catkin_make
 source devel/setup.bash
-Display - if rviz fails, likely using wrong display
+Display - if rviz fails, likely using wrong display) $ ls/tmp/.X*
 
 *Make sure they are executable
 $roslaunch lab2 lab2.launch
