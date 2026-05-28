@@ -1,9 +1,15 @@
 ----------Current Progress------------
-# remote pc
-$ roscore
 
-# Robot terminal 1
-$ roslaunch turtlebot3_bringup turtlebot3_robot.launch
+# Task 2 (from catkin_ws): inv_kinematics.py
+$ python3 src/lab3/scripts/inv_kinematics.py
 
-# Robot terminal 2
-roslaunch lab3 lab3.launch
+# Task 3 - In Launch folder
+catkin_make, source devel/setup.bash
+$ roslaunch lab3 lab3.launch
+
+
+
+----------------General Notes-------------------------
+DISPLAY ISSUES)
+1) (out of container) $ xhost +local:root~
+2) $ export DISPLAY=:0

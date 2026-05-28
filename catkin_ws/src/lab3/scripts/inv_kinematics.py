@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 
-# DH Parameters [a, alpha, d, theta_offset]
+# DH Parameters [a, alpha, d, theta_offset] (HW3 Solution)
 DH = np.array([
     [0.000, np.pi/2, 0.077,  0.0],
     [0.130, 0.0,     0.000,  0.0],
@@ -9,6 +9,7 @@ DH = np.array([
     [0.126, 0.0,     0.000,  0.0],
 ])
 
+# DH transform matrix
 def dh_transform(a, alpha, d, theta):
     ct, st = np.cos(theta), np.sin(theta)
     ca, sa = np.cos(alpha), np.sin(alpha)
@@ -19,14 +20,15 @@ def dh_transform(a, alpha, d, theta):
         [ 0,      0,      0,    1],
     ])
 
+# forward kinematics
 def forward_kinematics(q):
     T = np.eye(4)
     for i, (a, alpha, d, offset) in enumerate(DH):
         T = T @ dh_transform(a, alpha, d, q[i] + offset)
     return T
 
-def jacobian_position(q, delta=1e-5):
-    """3x4 position-only Jacobian — correct for 4-DOF arm."""
+# Jacobian matrix
+def jacobian(q, delta=1e-5):
     p0 = forward_kinematics(q)[:3, 3]
     J = np.zeros((3, len(q)))
     for i in range(len(q)):
@@ -36,12 +38,8 @@ def jacobian_position(q, delta=1e-5):
         J[:, i] = (p1 - p0) / delta
     return J
 
-def inverse_kinematics(p_desired, q_init=None, alpha=0.8,
+def inv_kinematics(p_desired, q_init=None, alpha=0.8,
                         max_iter=2000, tol=1e-4, damping=1e-4):
-    """
-    Position-only IK for 4-DOF arm.
-    p_desired: (3,) array [x, y, z]
-    """
     q = q_init.copy() if q_init is not None else np.zeros(4)
 
     for i in range(max_iter):
@@ -51,7 +49,7 @@ def inverse_kinematics(p_desired, q_init=None, alpha=0.8,
         if np.linalg.norm(err) < tol:
             return q, True, i
 
-        J = jacobian_position(q)
+        J = jacobian(q)
         # Damped least squares: J^T (J J^T + λI)^{-1}
         JJT = J @ J.T
         J_pinv = J.T @ np.linalg.inv(JJT + damping * np.eye(3))
@@ -88,7 +86,7 @@ for name, p_des in targets.items():
             q0 = smart_q_init(p_des) + np.random.uniform(-0.5, 0.5, 4)
             q0 = np.clip(q0, -np.pi, np.pi)
 
-        q_sol, success, iters = inverse_kinematics(p_des, q_init=q0)
+        q_sol, success, iters = inv_kinematics(p_des, q_init=q0)
         p_check = forward_kinematics(q_sol)[:3, 3]
         err = np.linalg.norm(p_check - p_des)
 
@@ -102,10 +100,10 @@ for name, p_des in targets.items():
     results[name] = q_sol
 
     print(f"Target: {name}")
-    print(f"  Desired  position:    {p_des}")
-    print(f"  Solved joints (rad):  {np.round(q_sol, 4)}")
-    print(f"  Solved joints (deg):  {np.round(np.degrees(q_sol), 2)}")
-    print(f"  FK-verified position: {np.round(p_check, 5)}")
-    print(f"  Position error:       {pos_error:.6f} m")
-    print(f"  Converged: {success} in {iters} iterations")
-    print()
+    print(f"Desired  position: {p_des}")
+    print(f"Solved joints (rad): {np.round(q_sol, 4)}")
+    print(f"Solved joints (deg): {np.round(np.degrees(q_sol), 2)}")
+    print(f"FK-verified position: {np.round(p_check, 5)}")
+    print(f"Position error: {pos_error:.6f} m")
+    print(f"Converged: {success} in {iters} iterations")
+    print("")

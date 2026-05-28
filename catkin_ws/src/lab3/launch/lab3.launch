@@ -1,36 +1,21 @@
 <?xml version="1.0"?>
 <launch>
 
-  <!-- ─────────────────────────────────────────
-       Arguments
-  ───────────────────────────────────────── -->
-  <arg name="pipeline"      default="ompl"/>
-  <arg name="fake_execution" default="false"/>
+  <arg name="pipeline" default="ompl"/>
 
-  <!-- ─────────────────────────────────────────
-       1. Robot bringup (hardware connection)
-  ───────────────────────────────────────── -->
+  <!-- 1. Robot bringup — starts hardware, controller_manager,
+          arm_controller, gripper_controller, joint_state_controller -->
   <include file="$(find turtlebot3_manipulation_bringup)/launch/turtlebot3_manipulation_bringup.launch"/>
 
-  <!-- ─────────────────────────────────────────
-       2. MoveIt! move_group
-          (loads URDF, SRDF, planning pipeline)
-  ───────────────────────────────────────── -->
+  <!-- 2. MoveIt! move_group — motion planning server -->
   <include file="$(find turtlebot3_manipulation_moveit_config)/launch/move_group.launch">
-    <arg name="pipeline"                   value="$(arg pipeline)"/>
     <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution"             value="$(arg fake_execution)"/>
+    <arg name="fake_execution"             value="false"/>
+    <arg name="pipeline"                   value="$(arg pipeline)"/>
     <arg name="info"                       value="true"/>
   </include>
 
-  <!-- ─────────────────────────────────────────
-       3. ros_control controllers
-  ───────────────────────────────────────── -->
-  <include file="$(find turtlebot3_manipulation_moveit_config)/launch/ros_controllers.launch"/>
-
-  <!-- ─────────────────────────────────────────
-       4. RViz with MoveIt! MotionPlanning plugin
-  ───────────────────────────────────────── -->
+  <!-- 3. RViz with MoveIt! MotionPlanning plugin -->
   <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch"/>
 
 </launch>
