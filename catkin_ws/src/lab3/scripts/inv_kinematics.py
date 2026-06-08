@@ -66,12 +66,10 @@ def smart_q_init(p_desired):
 
 # Target positions [x, y, z] in meters
 targets = {
-    "Pose A (front, mid)":  np.array([0.25,  0.00,  0.15]),
-    "Pose B (left side)":   np.array([0.15,  0.15,  0.20]),
-    "Pose C (low, right)":  np.array([0.20, -0.10,  0.08]),
+    "Pose A (front and center":  np.array([0.23,  0.00,  0.275]),
+    "Pose B (left side)":   np.array([-0.06,  -0.3,  0.3]),
+    "Pose C (right side)":  np.array([-0.06, 0.21,  0.2]),
 }
-
-print(f"FK sanity check at q=0: {np.round(forward_kinematics(np.zeros(4))[:3,3], 4)}")
 print("=" * 60)
 
 results = {}  # store for use in arm commander later
@@ -102,7 +100,7 @@ for name, p_des in targets.items():
     print(f"Target: {name}")
     print(f"Desired  position: {p_des}")
     print(f"Solved joints (rad): {np.round(q_sol, 4)}")
-    print(f"Solved joints (deg): {np.round(np.degrees(q_sol), 2)}")
+    print(f"Solved joints (deg): {np.round(np.degrees(q_sol), 3)}")
     print(f"FK-verified position: {np.round(p_check, 5)}")
     print(f"Position error: {pos_error:.6f} m")
     print(f"Converged: {success} in {iters} iterations")

@@ -15,7 +15,11 @@
     <arg name="info"                       value="true"/>
   </include>
 
-  <!-- 3. RViz with MoveIt! MotionPlanning plugin -->
-  <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch"/>
+  <!-- Launch TurtleBot3 Manipulation MoveIt RViz -->
+  <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch">
+    <!-- Optional: pass arguments to moveit_rviz.launch if needed -->
+    <!-- <arg name="config" value="true"/> -->
+    <!-- <arg name="debug" value="false"/> -->
+  </include>
 
 </launch>
