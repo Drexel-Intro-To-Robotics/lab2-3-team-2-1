@@ -1,25 +1,25 @@
 <?xml version="1.0"?>
+
 <launch>
 
-  <arg name="pipeline" default="ompl"/>
+  <!-- Arguments-->
+  <arg name="use_gui"   default="false" doc="Launch the ROBOTIS GUI controller instead of RViz"/>
+  <arg name="pipeline"  default="ompl"  doc="MoveIt planning pipeline (ompl | chomp | pilz_industrial_motion)"/>
 
-  <!-- 1. Robot bringup — starts hardware, controller_manager,
-          arm_controller, gripper_controller, joint_state_controller -->
+  <!-- Force display :2 for all GUI nodes spawned from this file -->
+  <env name="DISPLAY" value=":2"/>
+
+  <!-- Turtlebot3 manupulation bringup-->
   <include file="$(find turtlebot3_manipulation_bringup)/launch/turtlebot3_manipulation_bringup.launch"/>
 
-  <!-- 2. MoveIt! move_group — motion planning server -->
+  <!-- Moveit!-->
   <include file="$(find turtlebot3_manipulation_moveit_config)/launch/move_group.launch">
-    <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution"             value="false"/>
-    <arg name="pipeline"                   value="$(arg pipeline)"/>
-    <arg name="info"                       value="true"/>
+    <arg name="pipeline" value="$(arg pipeline)"/>
   </include>
 
-  <!-- Launch TurtleBot3 Manipulation MoveIt RViz -->
-  <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch">
-    <!-- Optional: pass arguments to moveit_rviz.launch if needed -->
-    <!-- <arg name="config" value="true"/> -->
-    <!-- <arg name="debug" value="false"/> -->
-  </include>
+  <!-- RViz with moveit plugin -->
+  <group unless="$(arg use_gui)">
+    <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch"/>
+  </group>
 
 </launch>

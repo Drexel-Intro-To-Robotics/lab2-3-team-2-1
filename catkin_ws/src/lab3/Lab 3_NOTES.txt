@@ -7,6 +7,9 @@ $ python3 src/lab3/scripts/inv_kinematics.py
 catkin_make, source devel/setup.bash
 $ roslaunch lab3 lab3.launch
 
+# Task 4 - After running launch folder (remember rosbag)
+$ rosrun lab3 task45.py
+
 
 
 ----------------General Notes-------------------------
@@ -24,6 +27,12 @@ $ roscore
 # Terminal 2 - ssh
 $ roslaunch turtlebot3_bringup turtlebot3_robot.launch
 
+# Teminal 3 - pc
+$ roslaunch lab3 lab3.launch
+
+
+
+#------------------(what the launch file does)-----------------------
 # Terminal 3 - pc
 $ roslaunch turtlebot3_manipulation_bringup turtlebot3_manipulation_bringup.launch
 
@@ -35,11 +44,12 @@ $ roslaunch turtlebot3_manipulation_moveit_config moveit_rviz.launch
 
 Controller GUI - DONT USE
 $ roslaunch turtlebot3_manipulation_gui turtlebot3_manipulation_gui.launch
+#------------------------------------------------------------------
 
 
 ROSBAG Recording)
 # new Terminal
-$ rosbag record -o /workspaces/lab2-3-team-2-1/catkin_ws/src/lab3/data/task4_RRT /joint_states /tf /tf_static /arm_controller/state
+$ rosbag record -o /workspaces/lab2-3-team-2-1/catkin_ws/src/lab3/data/.bags/task45_PRM /joint_states /tf /tf_static /arm_controller/state
 *Rename file before using each time
 
 # save rosbag
@@ -50,26 +60,32 @@ $ rosbag record -o /workspaces/lab2-3-team-2-1/catkin_ws/src/lab3/data/task4_RRT
 Task 2 Results:
 
 ============================================================
-Target: Pose A (front, mid)
-Desired  position: [0.23  0.    0.275]
-Solved joints (rad): [-0.     -0.1479  1.5737 -0.5787]
-Solved joints (deg): [ -0.    -8.47  90.17 -33.15]
-FK-verified position: [ 0.22991 -0.       0.27497]
-Position error: 0.000091 m
-Converged: True in 6 iterations
+Target: Pose A (front and center
+Desired  position: [0.044 0.    0.453]
+Solved joints (rad): [-0.     -0.1939  0.2053 -0.1735]
+Solved joints (deg): [ -0.  -11.1  11.8  -9.9]
+FK-verified position: [ 0.04399 -0.       0.4529 ]
+Position error: 0.000099 m
+Converged: True in 11 iterations
 
 Target: Pose B (left side)
-Desired  position: [-0.06 -0.3   0.3 ]
-Solved joints (rad): [-1.7682  0.5517  0.2038 -0.1683]
-Solved joints (deg): [-101.31   31.61   11.68   -9.65]
-FK-verified position: [-0.05999 -0.29994  0.29995]
-Position error: 0.000077 m
-Converged: True in 10 iterations
+Desired  position: [0.043 0.245 0.357]
+Solved joints (rad): [ 1.3971 -0.8748  0.3924 -0.3293]
+Solved joints (deg): [ 80.  -50.1  22.5 -18.9]
+FK-verified position: [0.04299 0.24494 0.35693]
+Position error: 0.000090 m
+Converged: True in 8 iterations
 
-Target: Pose C (low, right)
-Desired  position: [-0.06  0.21  0.2 ]
-Solved joints (rad): [ 1.8491 -0.6909  2.0626 -0.639 ]
-Solved joints (deg): [105.95 -39.58 118.18 -36.61]
-FK-verified position: [-0.05999  0.20997  0.2    ]
-Position error: 0.000036 m
-Converged: True in 6 iterations
+Target: Pose C (right side)
+Desired  position: [-0.043 -0.245  0.357]
+Solved joints (rad): [-1.7445 -0.8748  0.3924 -0.3293]
+Solved joints (deg): [-100.   -50.1   22.5  -18.9]
+FK-verified position: [-0.04299 -0.24494  0.35693]
+Position error: 0.000090 m
+Converged: True in 8 iterations
+
+------Max-------
+J1) 162
+J2) -103 90
+J3) -54 79
+J4) -103 117
