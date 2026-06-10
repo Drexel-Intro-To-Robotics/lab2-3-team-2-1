@@ -4,10 +4,6 @@ import math
 import numpy as np
 
 
-# ─────────────────────────────────────────────────────────────
-# DH Parameter Table for OpenMANIPULATOR-X
-# Each row: [a, alpha, d, theta_offset]  (modified DH)
-# ─────────────────────────────────────────────────────────────
 DH_PARAMS = [
     # a (m)    alpha (rad)   d (m)    theta_offset (rad)
     [0.0,      math.pi/2,    0.0770,  0.0          ],   # Joint 1
@@ -17,7 +13,6 @@ DH_PARAMS = [
 ]
 
 # Mounting transform: arm base relative to TurtleBot3 base_footprint
-# The OpenMANIPULATOR-X mounts on the Waffle Pi upper plate
 ARM_MOUNT_X = 0.0     # meters forward from base_footprint
 ARM_MOUNT_Y = 0.0     # meters left from base_footprint
 ARM_MOUNT_Z = 0.109   # meters above ground (Waffle Pi upper plate height)

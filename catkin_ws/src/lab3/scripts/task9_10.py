@@ -2,13 +2,10 @@
 
 import rospy
 import numpy as np
-import matplotlib.pyplot as plt
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import JointState
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 import moveit_commander
 import sys
+import moveit_msgs.msg 
 
 
 # setup - roscore, ssh, launch file (should see "you can start planning now")
@@ -87,9 +84,11 @@ class PolyTrajNode:
 
         #moveit! setup
         self.group = moveit_commander.MoveGroupCommander("arm")
-        self.client = actionlib.SimpleActionClient("/arm_controller/follow_joint_trajectory",
-            FollowJointTrajectoryAction)
-        self.client.wait_for_server()
+        self.group.set_goal_joint_tolerance(0.05)
+        self.group.set_goal_position_tolerance(0.01)
+        self.group.set_goal_orientation_tolerance(0.05)
+        self.group.set_max_velocity_scaling_factor(0.3)
+        self.group.set_max_acceleration_scaling_factor(0.3)
 
         # Data recording
         self.measured_pos  = []
@@ -102,8 +101,9 @@ class PolyTrajNode:
         rospy.loginfo("PolyTrajNode ready.")
 
     def joint_space_cb(self, msg):
-        self.measured_pos.append(list(msg.position[:4]))
-        self.measured_vel.append(list(msg.velocity[:4]))
+        # Skip wheel_left_joint and wheel_right_joint (indices 0,1)
+        self.measured_pos.append(list(msg.position[2:6]))
+        self.measured_vel.append(list(msg.velocity[2:6]))
         self.measured_time.append(msg.header.stamp.to_sec())
 
     #clear recording
@@ -114,27 +114,59 @@ class PolyTrajNode:
 
     # build and send goal
     def execute_trajectory(self, times, positions, velocities):
-        # setup FJTG message
-        goal = FollowJointTrajectoryGoal()
-        goal.trajectory.joint_names = joint_names
-        goal.trajectory.header.stamp = rospy.Time.now() + rospy.Duration(0.5)
+        from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+        
+        # Force tolerance every time before executing
+        rospy.set_param('/move_group/trajectory_execution/allowed_start_tolerance', 0.5)
+        
+        traj = JointTrajectory()
+        traj.joint_names = joint_names
+        traj.header.stamp = rospy.Time.now()
 
-        # send positions and velocities to ros_control
         for i, t in enumerate(times):
             pt = JointTrajectoryPoint()
-            pt.positions = list(positions[i])
+            pt.positions  = list(positions[i])
             pt.velocities = list(velocities[i])
             pt.time_from_start = rospy.Duration(float(t))
-            goal.trajectory.points.append(pt)
+            traj.points.append(pt)
+
+        moveit_traj = moveit_msgs.msg.RobotTrajectory()
+        moveit_traj.joint_trajectory = traj
 
         self.clear_log()
-        self.client.send_goal(goal)
-        self.client.wait_for_result()
+
+        # Retry loop - resync start state each attempt
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            self.group.set_start_state_to_current_state()
+            rospy.sleep(0.5)
+            
+            # Rebuild trajectory starting from actual current position
+            current_q = list(self.group.get_current_joint_values())
+            traj.points[0].positions = current_q  # snap first point to current
+            traj.header.stamp = rospy.Time.now()
+            moveit_traj.joint_trajectory = traj
+            
+            result = self.group.execute(moveit_traj, wait=True)
+            self.group.stop()
+            
+            if result:
+                rospy.loginfo(f"Execution succeeded on attempt {attempt+1}")
+                break
+            else:
+                rospy.logwarn(f"Attempt {attempt+1} failed, retrying...")
+                rospy.sleep(1.0)
+        else:
+            rospy.logerr("All execution attempts failed.")
+
         rospy.sleep(0.5)
 
     # Task 9 - compute polynomial in task space, convert to joint space via IK
     def run_task_space(self, x_start, x_end, T=4.0, method="quintic"):
         rospy.loginfo(f"Task 9: {method} task-space trajectory")
+        # Read actual current position instead of assuming home
+        q_start = list(self.group.get_current_joint_values())
+        rospy.loginfo(f"Starting from actual joints: {np.round(q_start, 3)}")
         # cartesian trajectory
         times, positions, velocities = generate_trajectory(x_start, x_end, T, method=method)
 
@@ -161,11 +193,18 @@ class PolyTrajNode:
         self.desired_pos = q_arr
         self.desired_vel = jvel
         self.desired_time = times
+        # Resync before execution
+        self.group.set_start_state_to_current_state()
+        rospy.sleep(1.0)
+        self.execute_trajectory(times, q_arr, jvel)
         self.execute_trajectory(times, q_arr, jvel)
 
     # Task 10: polynomial trajectory
     def run_joint_space(self, q_start, q_end, T=4.0, method="quintic"):
         rospy.loginfo(f"Task 10: {method} joint-space trajectory")
+        # Read actual current position instead of assuming home
+        q_start = list(self.group.get_current_joint_values())
+        rospy.loginfo(f"Starting from actual joints: {np.round(q_start, 3)}")
         # generate trajectory
         times, positions, velocities = generate_trajectory(q_start, q_end, T, method=method)
 
@@ -173,105 +212,34 @@ class PolyTrajNode:
         self.desired_pos  = positions
         self.desired_vel  = velocities
         self.desired_time = times
+        self.group.set_start_state_to_current_state()
+        rospy.sleep(1.0)
+        self.execute_trajectory(times, positions, velocities)
         self.execute_trajectory(times, positions, velocities)
 
-    # Plotting
-    def plot_results(self, title="Trajectory", save_path="/tmp/"):
-        # sanity check
-        if not self.measured_time:
-            rospy.logwarn("No data recorded.")
-            return
-
-        # initalize variables for plotting
-        t_meas = np.array(self.measured_time)
-        t_meas -= t_meas[0]  # normalize to start at 0
-        p_meas = np.array(self.measured_pos)
-        v_meas = np.array(self.measured_vel)
-        t_des = self.desired_time
-        p_des = self.desired_pos
-        v_des = self.desired_vel
-
-        # Interpolate desired onto measured timestamps for error
-        p_des_interp = np.array([
-            np.interp(t_meas, t_des, p_des[:, j])
-            for j in range(4)]).T
-        v_des_interp = np.array([
-            np.interp(t_meas, t_des, v_des[:, j])
-            for j in range(4)]).T
-
-        tracking_err = p_meas - p_des_interp
-
-        joint_labels = ["Joint 1", "Joint 2", "Joint 3", "Joint 4"]
-
-        # Figure 1 - position
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        fig.suptitle(f"{title} — Joint Position", fontweight="bold")
-        for j, ax in enumerate(axes.flat):
-            ax.plot(t_des,  p_des[:, j],  "b--", label="Desired",  linewidth=2)
-            ax.plot(t_meas, p_meas[:, j], "r-",  label="Measured", linewidth=1.5)
-            ax.set_title(joint_labels[j])
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Position (rad)")
-            ax.legend()
-            ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(f"{save_path}{title.replace(' ','_')}_position.png", dpi=150)
-        plt.show()
-
-        # Figure 2 - velocity
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        fig.suptitle(f"{title} — Joint Velocity", fontweight="bold")
-        for j, ax in enumerate(axes.flat):
-            ax.plot(t_des,  v_des[:, j],  "b--", label="Desired",  linewidth=2)
-            ax.plot(t_meas, v_meas[:, j], "r-",  label="Measured", linewidth=1.5)
-            ax.set_title(joint_labels[j])
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Velocity (rad/s)")
-            ax.legend()
-            ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(f"{save_path}{title.replace(' ','_')}_velocity.png", dpi=150)
-        plt.show()
-
-        # Figure 3 - Tracking error
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        fig.suptitle(f"{title} — Tracking Error", fontweight="bold")
-        for j, ax in enumerate(axes.flat):
-            ax.plot(t_meas, tracking_err[:, j], "g-", linewidth=1.5)
-            ax.axhline(0, color="k", linestyle="--", linewidth=0.8)
-            ax.fill_between(t_meas, tracking_err[:, j], alpha=0.2, color="g")
-            ax.set_title(joint_labels[j])
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Error (rad)")
-            ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(f"{save_path}{title.replace(' ','_')}_error.png", dpi=150)
-        plt.show()
-
-        # RMS error summary
-        rms = np.sqrt(np.mean(tracking_err**2, axis=0))
-        print(f"\n{'='*40}")
-        print(f"RMS Tracking Error — {title}")
-        for j, label in enumerate(joint_labels):
-            print(f"  {label}: {rms[j]:.5f} rad")
-        print(f"{'='*40}\n")
+    def go_home(self):
+        self.group.set_joint_value_target([0.017, -1.0, 0.297, 0.244])
+        self.group.go(wait=True)
+        self.group.stop()
+        rospy.sleep(1.0)
 
 if __name__ == "__main__":
     node = PolyTrajNode()
     rospy.sleep(1.0)
 
-    q_home = [0.0, 0.0, 0.0, 0.0]
-    q_goal = [0.3, -0.5, 0.8, -0.3]
+    q_home = [0.017, -1.0, 0.297, 0.244]
+    q_goal = [0.017, 0.716, -0.803, -0.419]
 
     # Task 9: task-space quintic
     node.run_task_space(
-        x_start=np.array([0.15, 0.0, 0.20]),
-        x_end  =np.array([0.25, 0.0, 0.15]),
+        x_start = np.array([0.20, 0.0, 0.25]),
+        x_end = np.array([0.25, 0.0, 0.35]),
         T=4.0, method="quintic")
-    node.plot_results(title="Task 9 Task-Space Quintic", save_path="/tmp/")
 
-    rospy.sleep(1.0)
-
+    node.go_home()
+    rospy.sleep(3.0)
+    rospy.loginfo(f"==========Starting Task 10=================")
     # Task 10: joint-space quintic (same goal)
     node.run_joint_space(q_home, q_goal, T=4.0, method="quintic")
-    node.plot_results(title="Task 10 Joint-Space Quintic", save_path="/tmp/")
+    node.go_home()
+    rospy.loginfo(f"==========DONE=================")

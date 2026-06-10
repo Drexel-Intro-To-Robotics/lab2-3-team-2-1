@@ -4,11 +4,9 @@ import rospy
 import moveit_commander
 import sys
 import numpy as np
+import geometry_msgs.msg
 from geometry_msgs.msg import Pose
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-from std_msgs.msg import String
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 
 # need to start up roscore, ssh into robot, and launch file
 # rosrun lab3 task8_traj.py
@@ -24,31 +22,30 @@ class TrajectoryNode:
 
         # limit speed for testing - 40%
         self.group = moveit_commander.MoveGroupCommander("arm")
-        self.group.set_vel_rate(0.4)
-        self.group.set_acc_rate(0.4)
+        self.group.set_max_velocity_scaling_factor(0.3)
+        self.group.set_max_acceleration_scaling_factor(0.3)
+        # set joint tolerance for reaching goals
+        self.group.set_goal_joint_tolerance(0.01)
+        self.group.set_goal_position_tolerance(0.01)
+        self.group.set_goal_orientation_tolerance(0.05)
 
         # Publisher for trajectory visualization
         self.traj_pub = rospy.Publisher("/arm_controller/command", JointTrajectory, queue_size=10)
 
-        # Action client for trajectory controller
-        self.client = actionlib.SimpleActionClient("/arm_controller/follow_joint_trajectory", FollowJointTrajectoryAction)
-        self.client.wait_for_server()
-
     # Joint space goal - q= [joint1, joint2, joint3, joint4]
-    def move_to_joint_goal(self, q, duration=3.0):
+    def move_to_joint_goal(self, q):
         rospy.loginfo(f"Joint-space goal: {np.round(q, 3)}")
         self.group.set_joint_value_target(q)
-        plan = self.group.plan()
-        if plan[0]:
-            self.group.execute(plan[1], wait=True)
-            self.group.stop()
-        else:
-            rospy.logwarn("Joint planning failed.")
+        success = self.group.go(wait=True)
+        self.group.stop()
+        self.group.clear_pose_targets()
+        if not success:
+            rospy.logwarn("motion failed.")
+        return success
 
-    # Task space goal - position (x,y,z) + orientation (qx,qy,qz,qw)
     def move_to_task_goal(self, x, y, z, qx=0, qy=0, qz=0, qw=1):
         rospy.loginfo(f"Task-space goal: ({x:.3f}, {y:.3f}, {z:.3f})")
-        target = Pose()
+        target = geometry_msgs.msg.Pose()
         target.position.x = x
         target.position.y = y
         target.position.z = z
@@ -56,28 +53,37 @@ class TrajectoryNode:
         target.orientation.y = qy
         target.orientation.z = qz
         target.orientation.w = qw
-
         self.group.set_pose_target(target)
-        plan = self.group.plan()
-        if plan[0]:
-            self.group.execute(plan[1], wait=True)
-            self.group.stop()
-            self.group.clear_pose_targets()
-        else:
-            rospy.logwarn("Task-space planning failed.")
+        success = self.group.go(wait=True)
+        self.group.stop()
+        self.group.clear_pose_targets()
+        if not success:
+            rospy.logwarn("motion failed.")
+        return success
 
     # waypoint list
     def move_through_waypoints(self, waypoints, eef_step=0.01, jump_threshold=0.0):
-        rospy.loginfo(f"Going through {len(waypoints)} waypoints...")
-        # interpolate path from points
-        (plan, fraction) = self.group.compute_cartesian_path(waypoints, eef_step, jump_threshold)
-
-        # fraction - percentage of path that can be followed (abort if lower than 90%)
+        rospy.loginfo(f"Executing {len(waypoints)} waypoints...")
+        
+        # Resync start state to current robot state
+        self.group.set_start_state_to_current_state()
+        rospy.sleep(0.5)  # let state update
+        
+        (plan, fraction) = self.group.compute_cartesian_path(
+            waypoints, eef_step, jump_threshold)
+        
+        rospy.loginfo(f"Cartesian path coverage: {fraction*100:.1f}%")
         if fraction > 0.9:
-            self.group.execute(plan, wait=True)
+            # Retime the trajectory to smooth it out
+            robot = moveit_commander.RobotCommander()
+            retimed = self.group.retime_trajectory(
+                robot.get_current_state(),
+                plan,
+                velocity_scaling_factor=0.3)
+            self.group.execute(retimed, wait=True)
             self.group.stop()
         else:
-            rospy.logwarn(f"Aborted: Only {fraction*100:.1f}% of path achievable.")
+            rospy.logwarn(f"Only {fraction*100:.1f}% of path achievable.")
 
     # Publish jointrajectory message (no moveit)
     def publish_joint_trajectory(self, q_list, time_list):
@@ -106,8 +112,7 @@ if __name__ == "__main__":
 
     # Task-space goal
     ry = np.pi / 6
-    node.move_to_task_goal(0.25, 0.0, 0.15,
-                            qy=np.sin(ry/2), qw=np.cos(ry/2))
+    node.move_to_task_goal(-0.25, -0.4, -0.2, qy=np.sin(ry/2), qw=np.cos(ry/2))
     rospy.sleep(1.0)
 
     # Waypoint list (straight line forward)

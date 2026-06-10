@@ -10,43 +10,9 @@ import time
 import sys
 from sensor_msgs.msg import JointState
 
-'''Task 2 Results:
-
-============================================================
-Target: Pose A (front and center
-Desired  position: [0.044 0.    0.453]
-Solved joints (rad): [-0.     -0.1939  0.2053 -0.1735]
-Solved joints (deg): [ -0.  -11.1  11.8  -9.9]
-FK-verified position: [ 0.04399 -0.       0.4529 ]
-Position error: 0.000099 m
-Converged: True in 11 iterations
-
-Target: Pose B (left side)
-Desired  position: [0.043 0.245 0.357]
-Solved joints (rad): [ 1.3971 -0.8748  0.3924 -0.3293]
-Solved joints (deg): [ 80.  -50.1  22.5 -18.9]
-FK-verified position: [0.04299 0.24494 0.35693]
-Position error: 0.000090 m
-Converged: True in 8 iterations
-
-Target: Pose C (right side)
-Desired  position: [-0.043 -0.245  0.357]
-Solved joints (rad): [-1.7445 -0.8748  0.3924 -0.3293]
-Solved joints (deg): [-100.   -50.1   22.5  -18.9]
-FK-verified position: [-0.04299 -0.24494  0.35693]
-Position error: 0.000090 m
-Converged: True in 8 iterations'''
-
 
 # planners - from instructions
 planners = ["RRTConnect", "PRM", "KPIECE"]
-
-# target poses from task 2
-# target_poses = [
-#     {"name": "Pose A", "xyz": [0.23,  0.00, 0.275], "ry": np.pi/6},
-#     {"name": "Pose B", "xyz": [-0.06, -0.30, 0.30], "ry": np.pi/4},
-#     {"name": "Pose C", "xyz": [-0.06,  0.18, 0.15], "ry": np.pi/3},
-# ]
 
 target_poses = [
     {"name": "Pose A", "xyz": [0.044,  0.00, 0.453], "ry": np.pi/6},

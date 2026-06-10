@@ -3,19 +3,17 @@ import numpy as np
 
 # DH Parameters [a, alpha, d, theta_offset] (HW3 Solution)
 DH = np.array([
-    [0.000, np.pi/2, 0.077,  0.0      ],   # Joint 1: no offset, pure rotation about Z
-    [0.130, 0.0,     0.000,  np.pi/2  ],   # Joint 2: +90° offset (arm is vertical at q=0)
-    [0.124, 0.0,     0.000,  0.0      ],   # Joint 3: no offset needed after J2 correction
-    [0.126, 0.0,     0.000,  0.0      ],   # Joint 4: no offset
-])
+    [0.000, np.pi/2, 0.077, 0.0], 
+    [0.130, 0.0, 0.000, np.pi/2], 
+    [0.124, 0.0, 0.000, 0.0], 
+    [0.126, 0.0, 0.000, 0.0],])
 
 # joint limits [min, max] in radians
 joint_limits = np.array([
-    [-np.pi,     np.pi   ],   # Joint 1
-    [-np.pi/2,   np.pi/2 ],   # Joint 2
-    [-np.pi/2,   np.pi/2 ],   # Joint 3
-    [-np.pi/2,   np.pi/2 ],   # Joint 4
-])
+    [-np.pi, np.pi], 
+    [-np.pi/2,np.pi/2],  
+    [-np.pi/2,np.pi/2],
+    [-np.pi/2,np.pi/2],])
 
 # DH transform matrix
 def dh_transform(a, alpha, d, theta):
@@ -25,8 +23,7 @@ def dh_transform(a, alpha, d, theta):
         [ct, -st*ca,  st*sa, a*ct],
         [st,  ct*ca, -ct*sa, a*st],
         [ 0,     sa,     ca,    d],
-        [ 0,      0,      0,    1],
-    ])
+        [ 0,      0,      0,    1],])
 
 # forward kinematics
 def forward_kinematics(q):
@@ -75,7 +72,7 @@ def smart_q_init(p_desired):
     q2 = np.arctan2(z - 0.077, r) - np.pi/4
     return np.array([q1, q2, np.pi/4, -np.pi/6])
 
-# Target positions 
+# Target positions - state space
 targets = {
     "Pose A (front and center":  np.array([0.044,  0.0,  0.453]),
     "Pose B (left side)":   np.array([0.043,  0.245,  0.357]),

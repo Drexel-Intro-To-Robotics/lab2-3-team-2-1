@@ -3,11 +3,10 @@
 <launch>
 
   <!-- Arguments-->
-  <arg name="use_gui"   default="false" doc="Launch the ROBOTIS GUI controller instead of RViz"/>
   <arg name="pipeline"  default="ompl"  doc="MoveIt planning pipeline (ompl | chomp | pilz_industrial_motion)"/>
 
   <!-- Force display :2 for all GUI nodes spawned from this file -->
-  <env name="DISPLAY" value=":2"/>
+  <env name="DISPLAY" value=":0"/>
 
   <!-- Turtlebot3 manupulation bringup-->
   <include file="$(find turtlebot3_manipulation_bringup)/launch/turtlebot3_manipulation_bringup.launch"/>
@@ -15,11 +14,10 @@
   <!-- Moveit!-->
   <include file="$(find turtlebot3_manipulation_moveit_config)/launch/move_group.launch">
     <arg name="pipeline" value="$(arg pipeline)"/>
+    <param name="trajectory_execution/allowed_start_tolerance" value="0.05"/>
   </include>
 
   <!-- RViz with moveit plugin -->
-  <group unless="$(arg use_gui)">
-    <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch"/>
-  </group>
+  <include file="$(find turtlebot3_manipulation_moveit_config)/launch/moveit_rviz.launch"/>
 
 </launch>

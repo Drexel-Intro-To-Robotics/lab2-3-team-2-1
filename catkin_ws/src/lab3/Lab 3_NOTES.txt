@@ -49,7 +49,7 @@ $ roslaunch turtlebot3_manipulation_gui turtlebot3_manipulation_gui.launch
 
 ROSBAG Recording)
 # new Terminal
-$ rosbag record -o /workspaces/lab2-3-team-2-1/catkin_ws/src/lab3/data/.bags/task45_PRM /joint_states /tf /tf_static /arm_controller/state
+$ rosbag record -o /workspaces/lab2-3-team-2-1/catkin_ws/src/lab3/data/task4RRT /joint_states /tf /tf_static /arm_controller/state /arm_controller/follow_joint_trajectory/feedback /arm_controller/follow_joint_trajectory/result
 *Rename file before using each time
 
 # save rosbag
@@ -89,3 +89,13 @@ J1) 162
 J2) -103 90
 J3) -54 79
 J4) -103 117
+
+
+python3 src/lab3/scripts/task6_7.py \
+  --bags src/lab3/data/Task45/task4RRT_2026-06-10-17-15-14.bag \
+         src/lab3/data/Task45/task4PRM_2026-06-10-17-20-49.bag \
+         src/lab3/data/Task45/task4PRKPIECE_2026-06-10-17-30-56.bag \
+  --labels "RRTConnect" "PRM" "KPIECE" \
+  --outdir ./lab3_plots/task4
+
+  /workspaces/lab2-3-team-2-1/catkin_ws/src/lab3/scripts
